@@ -57,18 +57,17 @@
       let dropSound, grabSound;
 
       function preload() {
-        function preload() {
-  this.load.image("background", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/background1.png");
-  this.load.image("miner", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/miner1.png"); // bạn nên thêm ảnh này vào repo
-  this.load.image("rope", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/rope.png");
-  this.load.image("hook", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/hook.png");
-  this.load.image("gold1", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/gold1.png");
-  this.load.image("gold2", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/gold2.png");
-  this.load.image("gold3", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/gold3.png");
+        this.load.image("background", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/background1.png");
+        this.load.image("miner", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/miner1.png");
+        this.load.image("rope", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/rope.png");
+        this.load.image("hook", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/hook.png");
+        this.load.image("gold1", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/gold1.png");
+        this.load.image("gold2", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/gold2.png");
+        this.load.image("gold3", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@images/images/gold3.png");
+        this.load.audio("drop", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@audio/audio/drop.mp3");
+        this.load.audio("grab", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@audio/audio/grab.mp3");
+      }
 
-  this.load.audio("drop", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@audio/audio/drop.mp3");
-  this.load.audio("grab", "https://cdn.jsdelivr.net/gh/anny-syx07/asset@audio/audio/grab.mp3");
-}
       function create() {
         this.add.image(config.width / 2, config.height / 2, "background").setDisplaySize(config.width, config.height);
         miner = this.add.image(config.width / 2, 100, "miner").setScale(0.5);
@@ -114,7 +113,6 @@
           }
         });
 
-        // Gửi sự kiện ready
         window.FarcadeSDK.singlePlayer.actions.ready();
       }
 
@@ -222,12 +220,10 @@
         });
       }
 
-      // SDK: Play again
       window.FarcadeSDK.on("play_again", () => {
-        location.reload(); // hoặc resetGame() nếu bạn có
+        location.reload();
       });
 
-      // SDK: Mute / Unmute
       window.FarcadeSDK.on("toggle_mute", (data) => {
         const isMuted = data.isMuted;
         dropSound.setMute(isMuted);
