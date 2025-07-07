@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gold Miner Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@farcade/game-sdk@latest/dist/index.min.js"></script>
+  <script>
+    const config = {
+      type: Phaser.AUTO,
+      width: 540,
+      height: 960,
+      physics: {
+        default: "arcade",
+        arcade: {
+          gravity: { y: 0 },
+          debug: false,
+        },
+      },
+      scene: { preload, create, update },
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
+    };
+
+    const game = new Phaser.Game(config);
+
+    let miner, rope, hook;
+    let golds, rocks, blindboxes, logos, bombs;
+    let score = 0, scoreText;
+    let angle = 0, direction = 1;
+    let isDropping = false, isGameOver = false;
+    let hookSpeed = 2;
+    let hookVelocityX = 0, hookVelocityY = 0;
+
+    const GOLD_CONFIG = {
+      gold1: { value: 10, pullSpeed: 3, hookSpeed: 4 },
+      gold2: { value: 30, pullSpeed: 2, hookSpeed: 3 },
+      gold3: { value: 150, pullSpeed: 1, hookSpeed: 1.5 },
+    };
+
+    const ROCK_CONFIG = {
+      rock1: { value: -10, pullSpeed: 0.5, hookSpeed: 1 },
+      rock2: { value: -25, pullSpeed: 0.3, hookSpeed: 0.8 },
+    };
+
+    const BLINDBOX_CONFIG = {
+      valueRange: [-50, 100],
+      pullSpeed: 2,
+      hookSpeed: 3,
+    };
+
+    const LOGO_CONFIG = {
+      valueRange: [50, 200],
+      pullSpeed: 2.5,
+      hookSpeed: 3.5,
+    };
+
+    let pullingObject = null;
+    const originalHookY = 180;
+    let dropSound, grabSound, explosionSound;
+
+    function preload() {
+      this.load.image("background", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/background1-LUh4GcUQpIcxUOGG4WJ4gkUl0XwrIJ.png?rrYT");
+      this.load.image("miner", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/miner-xM7sYqfnB6jxn77jRnn3xgT0It8NbP.png?ZMzH");
+      this.load.image("rope", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/rope-5inqWnUnXm62wuuOf01JQyhCFuSU8M.png?2Uk1");
+      this.load.image("hook", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/hook-uJ8myh0IKVYFJrf4uWQhY3yUoT5Hl1.png?7I2R");
+      this.load.image("gold1", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/gold1-sn26zj1DeXOohsD4ejmhH9rTDx44C3.png?3CXY");
+      this.load.image("gold2", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/gold2-8tI3OBNNUXthWkMnQ6a25x17GzlVC4.png?0TO3");
+      this.load.image("gold3", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/gold3-KD76qqTYCZitMC9tE0kl9atZVf82ym.png?HU2x");
+      this.load.image("rock1", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/rock1-SsrxSu4gf3nH6FOS2IN0XKsfutM0IZ.png?osmi");
+      this.load.image("rock2", "https://lqy3lriiybxcejon.public.blob.vercel-storage unmet/2da6c75e-12b9-4885-968a-321d35cbfa9d/rock2-zcnehXDetblkUu6YJkmpy41gadbnby.png?voNy");
+      this.load.image("blindbox", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/blindbox-ntSK2z0Bceafr8iq43gFsaQyL6dFj2.png?l8T3");
+      this.load.image("bomb", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/bomb-qGdC6CJYggWE8rviy1XSSoDjh4dq1O.png?DHnN");
+      this.load.image("logo", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/logo-wLjnLUU5OrKyQ7MHpf6a06dL3FvUoo.png?W8tR");
+      this.load.audio("drop", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/drop-KRqj2JHrlZUmTRfU0fYZTzIkrvRckS.mp3?yxGp");
+      this.load.audio("grab", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/grab-PMzAdQJ1OSxjVHpqBP3RchDf8NN1VE.mp3?iYje");
+      this.load.audio("explosion", "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/2da6c75e-12b9-4885-968a-321d35cbfa9d/explosion-u1uEXlUZqZ1d6V7HKNE5dEFZB2Wi3P.mp3?NpnK");
+    }
+
+    function create() {
+      this.add.image(config.width / 2, config.height / 2, "background").setDisplaySize(config.width, config.height);
+      miner = this.add.image(config.width / 2, 90, "miner").setScale(0.5).setDepth(2);
+      rope = this.add.image(config.width / 2, 150, "rope").setOrigin(0.5, 0).setScale(0.3, 1);
+      hook = this.physics.add.image(config.width / 2, originalHookY, "hook").setDepth(1).setScale(0.2).setCircle(30);
+
+      dropSound = this.sound.add("drop");
+      grabSound = this.sound.add("grab");
+      explosionSound = this.sound.add("explosion");
+
+      scoreText = this.add.text(20, 20, "Score: 0", { font: "28px Arial", fill: "#fff" });
+
+      golds = this.physics.add.group();
+      rocks = this.physics.add.group();
+      blindboxes = this.physics.add.group();
+      logos = this.physics.add.group();
+      bombs = this.physics.add.group();
+
+      let usedPositions = [];
+
+      function getUniquePosition() {
+        let x, y;
+        do {
+          x = Phaser.Math.Between(50, config.width - 50);
+          y = Phaser.Math.Between(config.height * 0.3, config.height * 0.95);
+        } while (usedPositions.some(pos => Math.abs(pos.x - x) < 50 && Math.abs(pos.y - y) < 50));
+        usedPositions.push({ x, y });
+        return { x, y };
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const type = Phaser.Math.Between(1, 3);
+        const key = "gold" + type;
+        const { value, pullSpeed, hookSpeed } = GOLD_CONFIG[key];
+        const pos = getUniquePosition();
+        const gold = this.physics.add
+          .image(pos.x, pos.y, key)
+          .setScale(0.6)
+          .setOrigin(0.5)
+          .setImmovable(true)
+          .setCircle(30);
+        gold.goldValue = value;
+        gold.pullSpeed = pullSpeed;
+        gold.hookSpeed = hookSpeed;
+        golds.add(gold);
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const type = Phaser.Math.Between(1, 2);
+        const key = "rock" + type;
+        const { value, pullSpeed, hookSpeed } = ROCK_CONFIG[key];
+        const pos = getUniquePosition();
+        const rock = this.physics.add
+          .image(pos.x, pos.y, key)
+          .setScale(0.4)
+          .setOrigin(0.5)
+          .setImmovable(true)
+          .setCircle(30);
+        rock.goldValue = value;
+        rock.pullSpeed = pullSpeed;
+        rock.hookSpeed = hookSpeed;
+        rocks.add(rock);
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const pos = getUniquePosition();
+        const blindbox = this.physics.add
+          .image(pos.x, pos.y, "blindbox")
+          .setScale(0.4)
+          .setOrigin(0.5)
+          .setImmovable(true)
+          .setCircle(30);
+        blindbox.goldValue = Phaser.Math.Between(BLINDBOX_CONFIG.valueRange[0], BLINDBOX_CONFIG.valueRange[1]);
+        blindbox.pullSpeed = BLINDBOX_CONFIG.pullSpeed;
+        blindbox.hookSpeed = BLINDBOX_CONFIG.hookSpeed;
+        blindboxes.add(blindbox);
+      }
+
+      for (let i = 0; i < 2; i++) {
+        const pos = getUniquePosition();
+        const logo = this.physics.add
+          .image(pos.x, pos.y, "logo")
+          .setScale(0.1)
+          .setOrigin(0.5)
+          .setImmovable(true)
+          .setCircle(30);
+        logo.goldValue = Phaser.Math.Between(LOGO_CONFIG.valueRange[0], LOGO_CONFIG.valueRange[1]);
+        logo.pullSpeed = LOGO_CONFIG.pullSpeed;
+        logo.hookSpeed = LOGO_CONFIG.hookSpeed;
+        logos.add(logo);
+      }
+
+      for (let i = 0; i < 2; i++) {
+        const pos = getUniquePosition();
+        const bomb = this.physics.add
+          .image(pos.x, pos.y, "bomb")
+          .setScale(0.4)
+          .setOrigin(0.5)
+          .setImmovable(true)
+          .setCircle(30);
+        bombs.add(bomb);
+      }
+
+      this.physics.add.overlap(hook, golds, collectGold, null, this);
+      this.physics.add.overlap(hook, rocks, collectRock, null, this);
+      this.physics.add.overlap(hook, blindboxes, collectBlindbox, null, this);
+      this.physics.add.overlap(hook, logos, collectLogo, null, this);
+      this.physics.add.overlap(hook, bombs, hitBomb, null, this);
+
+      this.input.on("pointerdown", () => {
+        if (!isDropping && !isGameOver && !pullingObject) {
+          isDropping = true;
+          dropSound.play();
+          window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+          const rad = Phaser.Math.DegToRad(angle);
+          hookVelocityX = hookSpeed * Math.sin(rad);
+          hookVelocityY = hookSpeed * Math.cos(rad);
+        }
+      });
+
+      window.FarcadeSDK.singlePlayer.actions.ready();
+    }
+
+    function collectGold(hook, gold) {
+      if (isDropping && !pullingObject) {
+        grabSound.play();
+        window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+        pullingObject = gold;
+        isDropping = false;
+        hookSpeed = gold.hookSpeed;
+      }
+    }
+
+    function collectRock(hook, rock) {
+      if (isDropping && !pullingObject) {
+        grabSound.play();
+        window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+        pullingObject = rock;
+        isDropping = false;
+        hookSpeed = rock.hookSpeed;
+      }
+    }
+
+    function collectBlindbox(hook, blindbox) {
+      if (isDropping && !pullingObject) {
+        grabSound.play();
+        window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+        pullingObject = blindbox;
+        isDropping = false;
+        hookSpeed = blindbox.hookSpeed;
+      }
+    }
+
+    function collectLogo(hook, logo) {
+      if (isDropping && !pullingObject) {
+        grabSound.play();
+        window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+        pullingObject = logo;
+        isDropping = false;
+        hookSpeed = logo.hookSpeed;
+      }
+    }
+
+    function hitBomb(hook, bomb) {
+      if (isDropping && !pullingObject) {
+        explosionSound.play();
+        window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+        bomb.destroy();
+        bombs.remove(bomb);
+        gameOver();
+      }
+    }
+
+    function update() {
+      if (isGameOver) return;
+
+      if (!isDropping && !pullingObject) {
+        angle += 0.5 * direction;
+        if (angle > 60 || angle < -60) direction *= -1;
+        const rad = Phaser.Math.DegToRad(angle);
+        hook.x = config.width / 2 + 100 * Math.sin(rad);
+        hook.y = originalHookY + 100 * Math.cos(rad);
+        updateRope();
+      } else if (isDropping) {
+        hook.x += hookVelocityX;
+        hook.y += hookVelocityY;
+        updateRope();
+        if (hook.y > config.height - 20 || hook.x < 0 || hook.x > config.width) {
+          isDropping = false;
+          pullingObject = null;
+          resetHook();
+          hookSpeed = 2;
+        }
+      }
+
+      if (pullingObject) {
+        const dx = miner.x - hook.x;
+        const dy = miner.y - hook.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = pullingObject.pullSpeed;
+        if (dist < 10) {
+          grabSound.play();
+          window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+          if (pullingObject.goldValue !== undefined) {
+            score += pullingObject.goldValue;
+            scoreText.setText("Score: " + score);
+            if (pullingObject.goldValue !== 0) {
+              const color = pullingObject.goldValue > 0 ? "#00ff00" : "#ff0000";
+              this.add
+                .text(hook.x, hook.y, pullingObject.goldValue > 0 ? "+" + pullingObject.goldValue : pullingObject.goldValue, {
+                  font: "24px Arial",
+                  fill: color,
+                })
+                .setDepth(3)
+                .setOrigin(0.5)
+                .setAlpha(1)
+                .setScale(0.5)
+                .setAngle(Phaser.Math.Between(-30, 30));
+              this.tweens.add({
+                targets: this.children.list[this.children.list.length - 1],
+                y: hook.y - 50,
+                alpha: 0,
+                scale: 1,
+                duration: 1000,
+                ease: "Power1",
+                onComplete: (tween, targets) => targets[0].destroy(),
+              });
+            }
+          }
+          pullingObject.destroy();
+          if (golds.contains(pullingObject)) golds.remove(pullingObject);
+          if (rocks.contains(pullingObject)) rocks.remove(pullingObject);
+          if (blindboxes.contains(pullingObject)) blindboxes.remove(pullingObject);
+          if (logos.contains(pullingObject)) logos.remove(pullingObject);
+          pullingObject = null;
+          resetHook();
+          hookSpeed = 2;
+        } else {
+          const angle = Math.atan2(dy, dx);
+          hook.x += Math.cos(angle) * speed;
+          hook.y += Math.sin(angle) * speed;
+          pullingObject.x = hook.x;
+          pullingObject.y = hook.y;
+          updateRope();
+        }
+      }
+    }
+
+    function updateRope() {
+      const dx = hook.x - miner.x;
+      const dy = hook.y - miner.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angleDeg = Phaser.Math.RadToDeg(Math.atan2(dy, dx)) - 90;
+      rope.setScale(rope.scaleX, length / rope.height);
+      rope.angle = angleDeg;
+      rope.x = miner.x;
+      rope.y = miner.y;
+      hook.setAngle(angleDeg);
+    }
+
+    function resetHook() {
+      hook.x = config.width / 2;
+      hook.y = originalHookY;
+      isDropping = false;
+      updateRope();
+    }
+
+    function gameOver() {
+      if (isGameOver) return;
+      isGameOver = true;
+      this.add.text(config.width / 2, config.height / 2, "Game Over", { font: "40px Arial", fill: "#ff0000" }).setOrigin(0.5);
+      window.FarcadeSDK.singlePlayer.actions.gameOver({ score: score });
+    }
+
+    window.FarcadeSDK.on("play_again", () => location.reload());
+    window.FarcadeSDK.on("toggle_mute", (data) => {
+      const isMuted = data.isMuted;
+      dropSound.setMute(isMuted);
+      grabSound.setMute(isMuted);
+      explosionSound.setMute(isMuted);
+    });
+  </script>
+</body>
+</html>
